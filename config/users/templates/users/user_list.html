@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container">
+    <div class="pricing-header px-3 py-3 pt-md-5 pb-md-4 mx-auto text-center">
+        <h1 class="display-4">Список пользователей</h1>
+    </div>
+    <div class="row">
+        {% for object in object_list %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ object.first_name }} {{ object.last_name }}</h5>
+                    <p class="card-text">Email: {{ object.email }}</p>
+                    <p class="card-text">Телефон: {% if object.phone %}{{ object.phone }}{% else %}Нет данных{% endif %}</p>
+                    {% if object.avatar %}
+                    <img src="{{ object.avatar.url }}" class="img-fluid rounded-circle" alt="Avatar">
+                    {% endif %}
+                    <a href="{% url 'users:user_confirm_delete' object.pk %}" class="btn btn-danger">Удалить</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Маршрут по Калининградской области</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        #authPanel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+        #saveRouteBtn {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            padding: 10px 20px;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Панель авторизации -->
+    <div id="authPanel">
+        <h3>Вход</h3>
+        <input type="text" id="email" placeholder="Email"><br><br>
+        <input type="password" id="password" placeholder="Пароль"><br><br>
+        <button onclick="login()">Войти</button>
+        <button onclick="logout()" style="display:none;" id="logoutBtn">Выйти</button>
+    </div>
+
+    <!-- Карта -->
+    <div id="map"></div>
+
+    <!-- Кнопка сохранения маршрута -->
+    <button id="saveRouteBtn">Сохранить маршрут</button>
+
+    <script>
+        // Инициализация карты
+        const map = L.map('map').setView([54.7104, 20.4522], 10);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        let markers = [];
+        let routeLine = null;
+
+        function resetRoute() {
+            if (routeLine) {
+                map.removeLayer(routeLine);
+                routeLine = null;
+            }
+        }
+
+        function updateRoute() {
+            resetRoute();
+            if (markers.length === 2) {
+                const [start, end] = markers.map(m => m.getLatLng());
+                const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
+
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.routes && data.routes.length > 0) {
+                            const route = data.routes[0];
+                            const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+                            routeLine = L.polyline(coords, {color: 'blue'}).addTo(map);
+
+                            const distance = (route.distance / 1000).toFixed(2);
+                            const duration = (route.duration / 60).toFixed(2);
+                            const popupContent = `Расстояние: ${distance} км<br>Время: ${duration} мин`;
+
+                            L.popup()
+                                .setLatLng(end)
+                                .setContent(popupContent)
+                                .openOn(map);
+
+                            document.getElementById('saveRouteBtn').style.display = 'inline';
+                        }
+                    });
+            }
+        }
+
+        function saveRoute() {
+            const [start, end] = markers.map(m => m.getLatLng());
+            const routeData = {
+                start_lat: start.lat,
+                start_lng: start.lng,
+                end_lat: end.lat,
+                end_lng: end.lng,
+                name: prompt('Введите название маршрута') || 'Без названия',
+            };
+
+            fetch('/api/routes/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('jwt')}`,
+                },
+                body: JSON.stringify(routeData),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.id) {
+                    alert('Маршрут успешно сохранен!');
+                } else {
+                    alert('Ошибка при сохранении маршрута');
+                }
+            });
+        }
+
+        map.on('click', function(e) {
+            if (markers.length >= 2) {
+                map.removeLayer(markers[0]);
+                markers.shift();
+                resetRoute();
+            }
+
+            const marker = L.marker(e.latlng).addTo(map);
+            markers.push(marker);
+
+            marker.on('contextmenu', function() {
+                map.removeLayer(marker);
+                markers = markers.filter(m => m !== marker);
+                resetRoute();
+            });
+
+            if (markers.length === 2) {
+                updateRoute();
+            }
+        });
+
+        document.getElementById('saveRouteBtn').addEventListener('click', saveRoute);
+
+        // Авторизация
+        function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            fetch('/api/token/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email, password}),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.access) {
+                    localStorage.setItem('jwt', data.access);
+                    alert('Вы успешно вошли!');
+                    document.getElementById('logoutBtn').style.display = 'inline';
+                } else {
+                    alert('Ошибка входа');
+                }
+            });
+        }
+
+        function logout() {
+            localStorage.removeItem('jwt');
+            alert('Вы вышли');
+            document.getElementById('logoutBtn').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
