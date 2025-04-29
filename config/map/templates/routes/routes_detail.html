@@ -1,10 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'kaliningrad_routes.html' %}
 
-</body>
-</html>
+{% block content %}
+<h2>{{ route.name }}</h2>
+
+<p><strong>Описание:</strong> {{ route.description }}</p>
+<p><strong>Расстояние:</strong> {{ route.distance|floatformat:2 }} км</p>
+<p><strong>Время в пути:</strong> {{ route.travel_time|floatformat:0 }} минут</p>
+
+<div style="height: 600px; margin-top: 20px;">
+    {{ map|safe }}
+</div>
+
+<a href="{% url 'map:route_list' %}">Назад к списку маршрутов</a>
+{% endblock %}

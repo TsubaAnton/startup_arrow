@@ -1,10 +1,12 @@
 import requests
 from django.views.generic import TemplateView
-from django.http import HttpResponse
 from django.views.generic import ListView, CreateView, DetailView, UpdateView, DeleteView
 from .models import Route
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+import json
 
 
 def fetch_pois(lat, lng):
@@ -61,35 +63,35 @@ class RouteListView(ListView):
     context_object_name = "routes"
 
 
-class RouteCreateView(CreateView):
-    def post(self, request):
-        start_lat = request.POST.get("start_lat")
-        start_lng = request.POST.get("start_lng")
-        end_lat = request.POST.get("end_lat")
-        end_lng = request.POST.get("end_lng")
-        name = request.POST.get("name", "Без названия")
-
-        if not all([start_lat, start_lng, end_lat, end_lng]):
-            return JsonResponse({"error": "Не все данные переданы"}, status=400)
-
-        route = Route.objects.create(
-            user=request.user,
-            start_lat=start_lat,
-            start_lng=start_lng,
-            end_lat=end_lat,
-            end_lng=end_lng,
-            name=name
-        )
-
-        return JsonResponse({
-            "id": route.id,
-            "name": route.name,
-            "start_lat": route.start_lat,
-            "start_lng": route.start_lng,
-            "end_lat": route.end_lat,
-            "end_lng": route.end_lng,
-            "created_at": route.created_at
-        }, status=201)
+# class RouteCreateView(CreateView):
+#     def post(self, request):
+#         start_lat = request.POST.get("start_lat")
+#         start_lng = request.POST.get("start_lng")
+#         end_lat = request.POST.get("end_lat")
+#         end_lng = request.POST.get("end_lng")
+#         name = request.POST.get("name", "Без названия")
+#
+#         if not all([start_lat, start_lng, end_lat, end_lng]):
+#             return JsonResponse({"error": "Не все данные переданы"}, status=400)
+#
+#         route = Route.objects.create(
+#             user=request.user,
+#             start_lat=start_lat,
+#             start_lng=start_lng,
+#             end_lat=end_lat,
+#             end_lng=end_lng,
+#             name=name
+#         )
+#
+#         return JsonResponse({
+#             "id": route.id,
+#             "name": route.name,
+#             "start_lat": route.start_lat,
+#             "start_lng": route.start_lng,
+#             "end_lat": route.end_lat,
+#             "end_lng": route.end_lng,
+#             "created_at": route.created_at
+#         }, status=201)
 
 
 class RouteDetailView(DetailView):
@@ -138,3 +140,27 @@ class RouteDeleteView(DeleteView):
 
 class KaliningradRouteView(TemplateView):
     template_name = "kaliningrad_routes.html"
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class RouteSaveView(CreateView):
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+            route = Route.objects.create(
+                user=request.user,
+                start_lat=data['start_lat'],
+                start_lng=data['start_lng'],
+                end_lat=data['end_lat'],
+                end_lng=data['end_lng'],
+                name=data.get('name', 'Без названия')
+            )
+            return JsonResponse({
+                'id': route.id,
+                'name': route.name,
+                'start_point': f"{route.start_lat},{route.start_lng}",
+                'end_point': f"{route.end_lat},{route.end_lng}",
+                'created_at': route.created_at.strftime('%Y-%m-%d %H:%M')
+            }, status=201)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)

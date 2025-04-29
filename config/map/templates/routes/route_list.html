@@ -1,10 +1,17 @@
+{% extends 'kaliningrad_routes.html' %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список маршрутов</title>
 </head>
 <body>
-
+    <h1>Маршруты</h1>
+    <ul>
+        {% for route in routes %}
+            <li>{{ route.name }} - {{ route.start_lat }}, {{ route.start_lng }} - {{ route.end_lat }}, {{ route.end_lng }}</li>
+        {% endfor %}
+    </ul>
 </body>
 </html>

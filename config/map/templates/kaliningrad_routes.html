@@ -3,32 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Маршрут по Калининградской области</title>
+    <title>Маршруты по Калининградской области</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
     <style>
         html, body {
             height: 100%;
             margin: 0;
             padding: 0;
+            overflow: hidden;
         }
         #map {
             height: 100%;
             width: 100%;
         }
-        #authPanel {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
             z-index: 1000;
         }
+        #poiPanel {
+            position: fixed;
+            top: 60px;
+            left: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+            width: 300px;
+            display: none;
+        }
+        .poi-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .poi-item:hover {
+            background-color: #f8f9fa;
+        }
+        .close-poi {
+            float: right;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .filter-controls {
+            margin-bottom: 15px;
+            position: sticky;
+            top: 0;
+            background: white;
+            padding-top: 10px;
+            z-index: 1;
+        }
+        .start-point {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .end-point {
+            color: #dc3545;
+            font-weight: bold;
+        }
         #saveRouteBtn {
-            position: absolute;
+            position: fixed;
             bottom: 20px;
             left: 20px;
             z-index: 1000;
@@ -40,41 +80,461 @@
             cursor: pointer;
             display: none;
         }
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 5px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .map-container {
+            height: 100%;
+            padding-top: 56px;
+        }
+        .auth-links {
+            display: flex;
+            gap: 10px;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .alert {
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 1rem;
+            border: 1px solid transparent;
+            border-radius: 0.25rem;
+        }
+        .alert-danger {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
     </style>
 </head>
 <body>
+    <!-- Навигационная панель -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Маршруты по Калининграду</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Главная</a>
+                    </li>
+                    {% if user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'map:route_list' %}">Мои маршруты</a>
+                    </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                        {% if user.is_staff %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'users:users' %}">Пользователи</a>
+                        </li>
+                        {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'users:user_form' %}">Профиль</a>
+                        </li>
+                        <li class="nav-item">
+                            <form action="{% url 'users:logout' %}" method="post" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="nav-link btn btn-link" style="padding: 0.5rem 1rem;">Выйти</button>
+                            </form>
+                        </li>
+                    {% else %}
+                        <div class="auth-links">
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#loginModal">Войти</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#registerModal">Регистрация</a>
+                            </li>
+                        </div>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
 
-    <!-- Панель авторизации -->
-    <div id="authPanel">
-        <h3>Вход</h3>
-        <input type="text" id="email" placeholder="Email"><br><br>
-        <input type="password" id="password" placeholder="Пароль"><br><br>
-        <button onclick="login()">Войти</button>
-        <button onclick="logout()" style="display:none;" id="logoutBtn">Выйти</button>
+    <div class="map-container">
+        <!-- Панель POI -->
+        <div id="poiPanel">
+            <span class="close-poi" onclick="document.getElementById('poiPanel').style.display = 'none'">×</span>
+            <h4>Места поблизости</h4>
+            <div class="filter-controls">
+                <h5>Фильтры:</h5>
+                <div class="form-check">
+                    <input class="form-check-input filter-checkbox" type="checkbox" data-category="historic" id="historicCheck" checked>
+                    <label class="form-check-label" for="historicCheck">Исторические</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input filter-checkbox" type="checkbox" data-category="tourism" id="tourismCheck" checked>
+                    <label class="form-check-label" for="tourismCheck">Достопримечательности</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input filter-checkbox" type="checkbox" data-category="museum" id="museumCheck" checked>
+                    <label class="form-check-label" for="museumCheck">Музеи</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input filter-checkbox" type="checkbox" data-category="religion" id="religionCheck" checked>
+                    <label class="form-check-label" for="religionCheck">Религия</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input filter-checkbox" type="checkbox" data-category="hotel" id="hotelCheck" checked>
+                    <label class="form-check-label" for="hotelCheck">Отели/Хостелы</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input filter-checkbox" type="checkbox" data-category="restaurant" id="restaurantCheck" checked>
+                    <label class="form-check-label" for="restaurantCheck">Кафе/Рестораны</label>
+                </div>
+            </div>
+            <div id="poiList"></div>
+        </div>
+
+        <!-- Основная карта -->
+        <div id="map"></div>
+
+        <!-- Кнопка сохранения маршрута -->
+        <button id="saveRouteBtn" class="btn btn-primary" {% if not user.is_authenticated %}onclick="showAuthAlert()"{% endif %}>Сохранить маршрут</button>
     </div>
 
-    <!-- Карта -->
-    <div id="map"></div>
+    <!-- Модальные окна для авторизации -->
+    <!-- Вход -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="loginModalLabel">Вход</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="{% url 'users:login' %}">
+                    <div class="modal-body">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="id_username">Email</label>
+                            <input type="email" name="username" class="form-control" id="id_username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_password">Пароль</label>
+                            <input type="password" name="password" class="form-control" id="id_password" required>
+                        </div>
+                        {% if login_error %}
+                        <div class="alert alert-danger">{{ login_error }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                        <button type="submit" class="btn btn-primary">Войти</button>
+                    </div>
+                </form>
+                <div class="modal-footer justify-content-center">
+                    <p>Нет аккаунта? <a href="#" data-bs-toggle="modal" data-bs-target="#registerModal" data-bs-dismiss="modal">Зарегистрируйтесь</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <!-- Кнопка сохранения маршрута -->
-    <button id="saveRouteBtn">Сохранить маршрут</button>
+    <!-- Регистрация -->
+    <div class="modal fade" id="registerModal" tabindex="-1" aria-labelledby="registerModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="registerModalLabel">Регистрация</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="{% url 'users:register' %}">
+                    <div class="modal-body">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="id_email">Email</label>
+                            <input type="email" name="email" class="form-control" id="id_email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_password1">Пароль</label>
+                            <input type="password" name="password1" class="form-control" id="id_password1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="id_password2">Подтвердите пароль</label>
+                            <input type="password" name="password2" class="form-control" id="id_password2" required>
+                        </div>
+                        {% if register_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in register_errors %}
+                            <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                        <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+                    </div>
+                </form>
+                <div class="modal-footer justify-content-center">
+                    <p>Уже есть аккаунт? <a href="#" data-bs-toggle="modal" data-bs-target="#loginModal" data-bs-dismiss="modal">Войдите</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
     <script>
         // Инициализация карты
-        const map = L.map('map').setView([54.7104, 20.4522], 10);
-
+        const map = L.map('map').setView([54.7104, 20.4522], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
         let markers = [];
         let routeLine = null;
+        let poiMarkers = [];
+        let allPois = [];
+
+        const poiCategories = {
+            'historic': {name: 'Исторические места', icon: '🏛️', color: '#6f42c1'},
+            'tourism': {name: 'Достопримечательности', icon: '📷', color: '#20c997'},
+            'museum': {name: 'Музеи', icon: '🖼️', color: '#fd7e14'},
+            'religion': {name: 'Религиозные места', icon: '⛪', color: '#17a2b8'},
+            'hotel': {name: 'Отели/Хостелы', icon: '🏨', color: '#007bff'},
+            'restaurant': {name: 'Кафе/Рестораны', icon: '🍴', color: '#dc3545'}
+        };
 
         function resetRoute() {
             if (routeLine) {
                 map.removeLayer(routeLine);
                 routeLine = null;
             }
+        }
+
+        function clearPoiMarkers() {
+            poiMarkers.forEach(marker => map.removeLayer(marker));
+            poiMarkers = [];
+        }
+
+        function getPoiCategory(tags) {
+            if (!tags) return null;
+
+            if (tags.historic) return 'historic';
+            if (tags.tourism === 'museum') return 'museum';
+            if (tags.tourism === 'attraction' || tags.tourism === 'viewpoint') return 'tourism';
+            if (tags['amenity'] === 'place_of_worship') return 'religion';
+            if (tags['tourism'] === 'hotel' || tags['tourism'] === 'hostel' || tags['amenity'] === 'hotel') return 'hotel';
+            if (tags['amenity'] === 'restaurant' || tags['amenity'] === 'cafe' || tags['amenity'] === 'bar') return 'restaurant';
+            return null;
+        }
+
+        async function fetchPOIs(lat, lng, radius = 1500) {
+            try {
+                const overpassUrl = `https://overpass-api.de/api/interpreter?data=[out:json];
+                    (
+                        node["historic"]["name"](around:${radius},${lat},${lng});
+                        node["tourism"="museum"]["name"](around:${radius},${lat},${lng});
+                        node["tourism"~"attraction|viewpoint"]["name"](around:${radius},${lat},${lng});
+                        node["amenity"="place_of_worship"]["name"](around:${radius},${lat},${lng});
+                        node["tourism"~"hotel|hostel"]["name"](around:${radius},${lat},${lng});
+                        node["amenity"~"hotel"]["name"](around:${radius},${lat},${lng});
+                        node["amenity"~"restaurant|cafe|bar"]["name"](around:${radius},${lat},${lng});
+                        way["historic"]["name"](around:${radius},${lat},${lng});
+                        way["tourism"="museum"]["name"](around:${radius},${lat},${lng});
+                        way["tourism"~"attraction|viewpoint"]["name"](around:${radius},${lat},${lng});
+                        way["amenity"="place_of_worship"]["name"](around:${radius},${lat},${lng});
+                        way["tourism"~"hotel|hostel"]["name"](around:${radius},${lat},${lng});
+                        way["amenity"~"restaurant|cafe|bar"]["name"](around:${radius},${lat},${lng});
+                    );
+                    out center;`;
+
+                const response = await fetch(overpassUrl);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+
+                const pois = [];
+                data.elements.forEach(element => {
+                    const coords = element.type === 'node' ?
+                        { lat: element.lat, lon: element.lon } :
+                        { lat: element.center.lat, lon: element.center.lon };
+
+                    const category = getPoiCategory(element.tags);
+                    if (!category || !element.tags?.name) return;
+
+                    pois.push({
+                        id: element.id,
+                        name: element.tags.name,
+                        lat: coords.lat,
+                        lon: coords.lon,
+                        tags: element.tags,
+                        category: category,
+                        distance: getDistance(lat, lng, coords.lat, coords.lon)
+                    });
+                });
+
+                return pois;
+            } catch (error) {
+                console.error('Ошибка при загрузке POI:', error);
+                return [];
+            }
+        }
+
+        async function showNearbyPOIs() {
+            if (markers.length === 0) return;
+
+            clearPoiMarkers();
+            const poiList = document.getElementById('poiList');
+            poiList.innerHTML = '<div class="text-center"><span class="loading-spinner"></span> Загрузка мест...</div>';
+
+            document.getElementById('poiPanel').style.display = 'block';
+
+            try {
+                const poiPromises = markers.map((marker, index) => {
+                    const latlng = marker.getLatLng();
+                    return fetchPOIs(latlng.lat, latlng.lng).then(pois => {
+                        return pois.map(poi => ({
+                            ...poi,
+                            routePointIndex: index,
+                            routePointType: index === 0 ? 'start' : 'end'
+                        }));
+                    });
+                });
+
+                const poisArrays = await Promise.all(poiPromises);
+                allPois = [].concat(...poisArrays);
+
+                // Удаляем дубликаты
+                const uniquePois = [];
+                const seenIds = new Set();
+
+                allPois.forEach(poi => {
+                    if (!seenIds.has(poi.id)) {
+                        seenIds.add(poi.id);
+                        uniquePois.push(poi);
+                    }
+                });
+
+                allPois = uniquePois.sort((a, b) => a.distance - b.distance);
+
+                if (allPois.length === 0) {
+                    poiList.innerHTML = '<div class="alert alert-info">Не найдено мест поблизости. Попробуйте выбрать другие точки.</div>';
+                } else {
+                    updatePoiList();
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                poiList.innerHTML = '<div class="alert alert-danger">Ошибка при загрузке данных. Попробуйте позже.</div>';
+            }
+        }
+
+        function updatePoiList() {
+            const poiList = document.getElementById('poiList');
+            poiList.innerHTML = '';
+
+            const activeFilters = Array.from(document.querySelectorAll('.filter-checkbox:checked'))
+                .map(el => el.dataset.category);
+
+            const filteredPois = allPois.filter(poi => activeFilters.includes(poi.category));
+
+            if (filteredPois.length === 0) {
+                poiList.innerHTML = '<div class="alert alert-info">Нет мест по выбранным фильтрам</div>';
+                return;
+            }
+
+            const groupedPois = {};
+            filteredPois.forEach(poi => {
+                if (!groupedPois[poi.category]) {
+                    groupedPois[poi.category] = [];
+                }
+                groupedPois[poi.category].push(poi);
+            });
+
+            for (const [category, pois] of Object.entries(groupedPois)) {
+                const categoryHeader = document.createElement('h5');
+                categoryHeader.innerHTML = `${poiCategories[category].icon} ${poiCategories[category].name}`;
+                categoryHeader.style.marginTop = '15px';
+                categoryHeader.style.color = poiCategories[category].color;
+                poiList.appendChild(categoryHeader);
+
+                pois.forEach(poi => {
+                    const pointTypeClass = poi.routePointType === 'start' ? 'start-point' : 'end-point';
+                    const pointTypeText = poi.routePointType === 'start' ? 'Старт' : 'Финиш';
+
+                    const item = document.createElement('div');
+                    item.className = 'poi-item';
+                    item.innerHTML = `
+                        <h6>${poi.name}</h6>
+                        <small class="text-muted">${poi.tags.description || poi.tags.historic || poi.tags.tourism || ''}</small>
+                        <div><small>${poi.distance.toFixed(1)} км от <span class="${pointTypeClass}">${pointTypeText}</span></small></div>
+                    `;
+                    item.onclick = () => {
+                        map.setView([poi.lat, poi.lon], 16);
+                        highlightPoi(poi);
+                    };
+                    poiList.appendChild(item);
+                });
+            }
+
+            updatePoiMarkers();
+        }
+
+        function updatePoiMarkers() {
+            clearPoiMarkers();
+
+            const activeFilters = Array.from(document.querySelectorAll('.filter-checkbox:checked'))
+                .map(el => el.dataset.category);
+
+            const filteredPois = allPois.filter(poi => activeFilters.includes(poi.category));
+
+            filteredPois.forEach(poi => {
+                const marker = L.marker([poi.lat, poi.lon], {
+                    icon: L.divIcon({
+                        className: 'poi-marker',
+                        html: `<span style="background-color: ${poiCategories[poi.category].color}; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">${poiCategories[poi.category].icon}</span>`,
+                        iconSize: [24, 24]
+                    })
+                }).addTo(map)
+                    .bindPopup(`<b>${poi.name}</b><br>${poi.tags.description || ''}`);
+
+                poiMarkers.push(marker);
+            });
+        }
+
+        function highlightPoi(poi) {
+            clearPoiMarkers();
+
+            const marker = L.marker([poi.lat, poi.lon], {
+                icon: L.divIcon({
+                    className: 'poi-marker',
+                    html: `<span style="background-color: ${poiCategories[poi.category].color}; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 16px;">${poiCategories[poi.category].icon}</span>`,
+                    iconSize: [32, 32]
+                })
+            }).addTo(map)
+                .bindPopup(`<b>${poi.name}</b><br>${poi.tags.description || ''}`)
+                .openPopup();
+
+            poiMarkers.push(marker);
+        }
+
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a =
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
         }
 
         function updateRoute() {
@@ -101,44 +561,68 @@
                                 .openOn(map);
 
                             document.getElementById('saveRouteBtn').style.display = 'inline';
+
+                            showNearbyPOIs();
                         }
                     });
             }
         }
 
         function saveRoute() {
+            if (!{{ user.is_authenticated|yesno:"true,false" }}) {
+                alert('Для сохранения маршрута необходимо войти в систему');
+                return;
+            }
+
             const [start, end] = markers.map(m => m.getLatLng());
             const routeData = {
                 start_lat: start.lat,
                 start_lng: start.lng,
                 end_lat: end.lat,
                 end_lng: end.lng,
-                name: prompt('Введите название маршрута') || 'Без названия',
+                name: prompt('Введите название маршрута') || 'Без названия'
             };
 
-            fetch('/api/routes/', {
+            fetch('/api/save_route/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('jwt')}`,
+                    'X-CSRFToken': '{{ csrf_token }}'
                 },
-                body: JSON.stringify(routeData),
+                body: JSON.stringify(routeData)
             })
             .then(response => response.json())
             .then(data => {
                 if (data.id) {
-                    alert('Маршрут успешно сохранен!');
+                    alert(`Маршрут "${data.name}" сохранен!`);
                 } else {
-                    alert('Ошибка при сохранении маршрута');
+                    alert('Ошибка: ' + (data.error || 'Не удалось сохранить маршрут'));
                 }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ошибка соединения');
             });
         }
+
+        function showAuthAlert() {
+            alert('Для сохранения маршрута необходимо войти в систему');
+            const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+            loginModal.show();
+        }
+
+        // Обработчики событий
+        document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', updatePoiList);
+        });
 
         map.on('click', function(e) {
             if (markers.length >= 2) {
                 map.removeLayer(markers[0]);
                 markers.shift();
                 resetRoute();
+                clearPoiMarkers();
+                document.getElementById('poiPanel').style.display = 'none';
             }
 
             const marker = L.marker(e.latlng).addTo(map);
@@ -148,42 +632,33 @@
                 map.removeLayer(marker);
                 markers = markers.filter(m => m !== marker);
                 resetRoute();
+                clearPoiMarkers();
+                document.getElementById('poiPanel').style.display = 'none';
             });
 
             if (markers.length === 2) {
                 updateRoute();
+            } else if (markers.length === 1) {
+                showNearbyPOIs();
             }
         });
 
         document.getElementById('saveRouteBtn').addEventListener('click', saveRoute);
 
-        // Авторизация
-        function login() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+        // Автоматическое открытие модального окна при ошибках
+        {% if login_error %}
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+            loginModal.show();
+        });
+        {% endif %}
 
-            fetch('/api/token/', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({email, password}),
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.access) {
-                    localStorage.setItem('jwt', data.access);
-                    alert('Вы успешно вошли!');
-                    document.getElementById('logoutBtn').style.display = 'inline';
-                } else {
-                    alert('Ошибка входа');
-                }
-            });
-        }
-
-        function logout() {
-            localStorage.removeItem('jwt');
-            alert('Вы вышли');
-            document.getElementById('logoutBtn').style.display = 'none';
-        }
+        {% if register_errors %}
+        document.addEventListener('DOMContentLoaded', function() {
+            const registerModal = new bootstrap.Modal(document.getElementById('registerModal'));
+            registerModal.show();
+        });
+        {% endif %}
     </script>
 </body>
 </html>
