@@ -263,7 +263,7 @@
 
     <!-- Модальные окна для авторизации -->
     <!-- Вход -->
-    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -814,6 +814,26 @@
     // Очищаем историю, если нужно
     window.history.replaceState(null, null, window.location.pathname);
 }
+        document.addEventListener('DOMContentLoaded', function() {
+    // Закрываем все модальные окна при загрузке
+    $('.modal').modal('hide');
+
+    // Обработчик для кнопки "Войти"
+    document.querySelectorAll('[data-bs-target="#loginModal"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            $('#loginModal').modal('show');
+        });
+    });
+});
+        document.addEventListener('DOMContentLoaded', function() {
+    var myModal = new bootstrap.Modal(document.getElementById('loginModal'));
+    myModal.hide();
+
+    // Очищаем параметры URL
+    if(window.location.href.indexOf('?next=') > -1) {
+        history.replaceState({}, document.title, "/");
+    }
+});
     </script>
 </body>
 </html>
