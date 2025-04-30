@@ -3,7 +3,7 @@ from django.contrib.auth.views import PasswordResetConfirmView, PasswordResetVie
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy, reverse
-from django.views.generic import CreateView, UpdateView, ListView, DeleteView
+from django.views.generic import  TemplateView, CreateView, UpdateView, ListView, DeleteView
 import secrets
 from .forms import UserRegisterForm, UserProfileForm
 from .models import User
@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
+from .achievements import ACHIEVEMENTS
 
 EMAIL_HOST_USER = settings.EMAIL_HOST_USER
 
@@ -107,4 +108,16 @@ def profile(request):
         user.save()
         return redirect('users:profile')
 
-    return render(request, 'users/profile.html')
+    # GET — рендерим форму + достижения
+    return render(request, 'users/profile.html', {
+        'achievements': ACHIEVEMENTS,
+    })
+
+
+class ProfileView(TemplateView):
+    template_name = 'users/profile.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['achievements'] = ACHIEVEMENTS
+        return ctx
