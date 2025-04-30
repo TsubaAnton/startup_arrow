@@ -2,7 +2,7 @@ from django.contrib.auth.views import LoginView, LogoutView
 from django.urls import path
 from .apps import UsersConfig
 from .views import RegisterView, ProfileView, email_verification, ResetView, PasswordResetDone, ResetConfirmView, \
-    ResetCompleteView, UserListView, UserDeleteView
+    ResetCompleteView, UserListView, UserDeleteView, profile
 
 app_name = UsersConfig.name
 
@@ -18,4 +18,5 @@ urlpatterns = [
     path('email_confirm/<str:token>/', email_verification, name='email_confirm'),
     path('users/', UserListView.as_view(), name='users'),
     path('users/<int:pk>/delete', UserDeleteView.as_view(), name='user_confirm_delete'),
+    path('profile/', profile, name='profile'),
 ]

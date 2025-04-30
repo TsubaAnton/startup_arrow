@@ -9,6 +9,8 @@ from .forms import UserRegisterForm, UserProfileForm
 from .models import User
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
 
 EMAIL_HOST_USER = settings.EMAIL_HOST_USER
 
@@ -88,3 +90,21 @@ class ResetCompleteView(PasswordResetCompleteView):
     template_name = 'users/password_reset_complete.html'
 
 
+@login_required
+def profile(request):
+    if request.method == 'POST':
+        # Обновление данных
+        user = request.user
+        user.first_name = request.POST.get('first_name', '')
+        user.last_name = request.POST.get('last_name', '')
+        user.phone = request.POST.get('phone', '')
+        user.country = request.POST.get('country', '')
+
+        # Обработка аватара
+        if 'avatar' in request.FILES:
+            user.avatar = request.FILES['avatar']
+
+        user.save()
+        return redirect('users:profile')
+
+    return render(request, 'users/profile.html')
