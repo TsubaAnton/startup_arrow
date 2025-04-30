@@ -2,7 +2,14 @@
 
 {% block content %}
     <div class="col-12">
-        <form class="row" method="post" enctype="multipart/form-data">
+        <form
+            class="row"
+            method="post"
+            action="{% url 'users:login' %}"         {# ← Явно указываем URL для POST #}
+            enctype="multipart/form-data"
+        >
+            {% csrf_token %}                           {# ← Сразу после открытия формы #}
+
             <div class="col-6">
                 <div class="col-6">
                     <div class="card">
@@ -12,7 +19,6 @@
                             </h3>
                         </div>
                         <div class="card-body">
-                            {% csrf_token %}
                             {{ form.as_p }}
                             <p><a href="{% url 'users:password_reset' %}">Забыли пароль?</a></p>
                             <button type="submit" class="btn btn-success">Войти</button>

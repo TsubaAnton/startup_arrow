@@ -1,4 +1,5 @@
 import requests
+from django.contrib.auth.decorators import login_required
 from django.views.generic import TemplateView
 from django.views.generic import ListView, CreateView, DetailView, UpdateView, DeleteView
 from .models import Route
@@ -62,6 +63,8 @@ class RouteListView(ListView):
     template_name = "routes/route_list.html"
     context_object_name = "routes"
 
+    def get_queryset(self):
+        return Route.objects.filter(user=self.request.user)
 
 # class RouteCreateView(CreateView):
 #     def post(self, request):
@@ -103,39 +106,24 @@ class RouteDetailView(DetailView):
 class RouteUpdateView(UpdateView):
     def post(self, request, pk):
         route = get_object_or_404(Route, pk=pk)
-
-        # Проверяем права пользователя
         if route.user != request.user:
-            return JsonResponse({"error": "Нет прав на изменение этого маршрута"}, status=403)
+            return JsonResponse({"error": "Нет прав на изменение"}, status=403)
 
-        route.start_lat = request.POST.get("start_lat", route.start_lat)
-        route.start_lng = request.POST.get("start_lng", route.start_lng)
-        route.end_lat = request.POST.get("end_lat", route.end_lat)
-        route.end_lng = request.POST.get("end_lng", route.end_lng)
-        route.name = request.POST.get("name", route.name)
+        data = json.loads(request.body)
+        for field in ['start_lat', 'start_lng', 'end_lat', 'end_lng', 'name']:
+            if field in data:
+                setattr(route, field, data[field])
         route.save()
-
-        return JsonResponse({
-            "id": route.id,
-            "name": route.name,
-            "start_lat": route.start_lat,
-            "start_lng": route.start_lng,
-            "end_lat": route.end_lat,
-            "end_lng": route.end_lng,
-            "created_at": route.created_at
-        })
+        return JsonResponse(route.to_dict())
 
 
 class RouteDeleteView(DeleteView):
     def post(self, request, pk):
         route = get_object_or_404(Route, pk=pk)
-
-        # Проверяем права пользователя
         if route.user != request.user:
-            return JsonResponse({"error": "Нет прав на удаление этого маршрута"}, status=403)
-
+            return JsonResponse({"error": "Нет прав на удаление"}, status=403)
         route.delete()
-        return JsonResponse({"result": "Маршрут удален"})
+        return JsonResponse({"status": "success"})
 
 
 class KaliningradRouteView(TemplateView):
@@ -145,6 +133,9 @@ class KaliningradRouteView(TemplateView):
 @method_decorator(csrf_exempt, name='dispatch')
 class RouteSaveView(CreateView):
     def post(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Требуется авторизация'}, status=401)
+
         try:
             data = json.loads(request.body)
             route = Route.objects.create(
@@ -155,12 +146,59 @@ class RouteSaveView(CreateView):
                 end_lng=data['end_lng'],
                 name=data.get('name', 'Без названия')
             )
-            return JsonResponse({
-                'id': route.id,
-                'name': route.name,
-                'start_point': f"{route.start_lat},{route.start_lng}",
-                'end_point': f"{route.end_lat},{route.end_lng}",
-                'created_at': route.created_at.strftime('%Y-%m-%d %H:%M')
-            }, status=201)
+            return JsonResponse(route.to_dict(), status=201)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+
+# Новые методы API
+@login_required
+def user_routes(request):
+    routes = Route.objects.filter(user=request.user).values(
+        'id', 'name', 'start_lat', 'start_lng', 'end_lat', 'end_lng'
+    )
+    return JsonResponse({'routes': list(routes)})
+
+
+@login_required
+def delete_route(request, route_id):
+    route = get_object_or_404(Route, id=route_id, user=request.user)
+    route.delete()
+    return JsonResponse({'status': 'deleted'})
+
+
+# views.py
+@login_required
+def delete_route(request, route_id):
+    try:
+        route = Route.objects.get(id=route_id, user=request.user)
+        route.delete()
+        return JsonResponse({'status': 'success'})
+    except Route.DoesNotExist:
+        return JsonResponse({'error': 'Маршрут не найден'}, status=404)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class RouteSaveView(CreateView):
+    def post(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error': 'Требуется авторизация'}, status=401)
+
+        try:
+            data = json.loads(request.body)
+            if not all(key in data for key in ['start_lat', 'start_lng', 'end_lat', 'end_lng']):
+                return JsonResponse({'error': 'Недостаточно данных'}, status=400)
+
+            route = Route.objects.create(
+                user=request.user,
+                start_lat=float(data['start_lat']),
+                start_lng=float(data['start_lng']),
+                end_lat=float(data['end_lat']),
+                end_lng=float(data['end_lng']),
+                name=data.get('name', 'Без названия')
+            )
+            return JsonResponse(route.to_dict(), status=201)
+        except ValueError:
+            return JsonResponse({'error': 'Неверный формат координат'}, status=400)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)

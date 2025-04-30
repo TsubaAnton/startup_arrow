@@ -116,10 +116,51 @@
             background-color: #f8d7da;
             border-color: #f5c6cb;
         }
+        #routesPanel {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+            width: 300px;
+            display: none;
+        }
+
+        .route-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .route-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .route-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .route-item h5 {
+            margin-bottom: 5px;
+            color: #007bff;
+        }
+
+        .route-item small {
+            color: #6c757d;
+        }
     </style>
 </head>
 <body>
-    <!-- Навигационная панель -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid">
             <a class="navbar-brand" href="/">Маршруты по Калининграду</a>
@@ -133,7 +174,7 @@
                     </li>
                     {% if user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'map:route_list' %}">Мои маршруты</a>
+                        <a class="nav-link" href="#" onclick="loadUserRoutes()">Мои маршруты</a>
                     </li>
                     {% endif %}
                 </ul>
@@ -169,6 +210,12 @@
     </nav>
 
     <div class="map-container">
+        <!-- Панель сохраненных маршрутов -->
+        <div id="routesPanel">
+            <span class="close-poi" onclick="document.getElementById('routesPanel').style.display = 'none'">×</span>
+            <h4>Мои сохраненные маршруты</h4>
+            <div id="routesList"></div>
+        </div>
         <!-- Панель POI -->
         <div id="poiPanel">
             <span class="close-poi" onclick="document.getElementById('poiPanel').style.display = 'none'">×</span>
@@ -568,42 +615,92 @@
             }
         }
 
-        function saveRoute() {
+       async function loadUserRoutes() {
             if (!{{ user.is_authenticated|yesno:"true,false" }}) {
-                alert('Для сохранения маршрута необходимо войти в систему');
+                alert('Для просмотра маршрутов необходимо войти в систему');
                 return;
             }
 
-            const [start, end] = markers.map(m => m.getLatLng());
-            const routeData = {
-                start_lat: start.lat,
-                start_lng: start.lng,
-                end_lat: end.lat,
-                end_lng: end.lng,
-                name: prompt('Введите название маршрута') || 'Без названия'
-            };
+            const routesPanel = document.getElementById('routesPanel');
+            const routesList = document.getElementById('routesList');
+            routesList.innerHTML = '<div class="text-center"><span class="loading-spinner"></span> Загрузка маршрутов...</div>';
+            routesPanel.style.display = 'block';
 
-            fetch('/api/save_route/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify(routeData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.id) {
-                    alert(`Маршрут "${data.name}" сохранен!`);
-                } else {
-                    alert('Ошибка: ' + (data.error || 'Не удалось сохранить маршрут'));
+            try {
+                const response = await fetch('/api/user_routes/');
+                const data = await response.json();
+
+                if (data.error) {
+                    routesList.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    return;
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Ошибка соединения');
-            });
+
+                if (data.routes.length === 0) {
+                    routesList.innerHTML = '<div class="alert alert-info">У вас пока нет сохраненных маршрутов</div>';
+                    return;
+                }
+
+                routesList.innerHTML = '';
+                data.routes.forEach(route => {
+                    const routeElement = document.createElement('div');
+                    routeElement.className = 'route-item';
+                    routeElement.innerHTML = `
+                        <h5>${route.name}</h5>
+                        <small>Старт: ${route.start_lat.toFixed(4)}, ${route.start_lng.toFixed(4)}</small><br>
+                        <small>Финиш: ${route.end_lat.toFixed(4)}, ${route.end_lng.toFixed(4)}</small>
+                        <div class="route-actions">
+                            <button class="btn btn-sm btn-primary" onclick="buildRoute(${route.start_lat}, ${route.start_lng}, ${route.end_lat}, ${route.end_lng})">Построить</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteRoute(${route.id})">Удалить</button>
+                        </div>
+                    `;
+                    routesList.appendChild(routeElement);
+                });
+            } catch (error) {
+                console.error('Ошибка:', error);
+                routesList.innerHTML = '<div class="alert alert-danger">Ошибка загрузки маршрутов</div>';
+            }
         }
+
+       function buildRoute(startLat, startLng, endLat, endLng) {
+            // Очистка предыдущих маркеров
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            // Добавление новых маркеров
+            const startMarker = L.marker([startLat, startLng]).addTo(map);
+            const endMarker = L.marker([endLat, endLng]).addTo(map);
+            markers.push(startMarker, endMarker);
+
+            // Построение маршрута
+            updateRoute();
+            document.getElementById('routesPanel').style.display = 'none';
+        }
+
+        async function deleteRoute(routeId) {
+            if (!confirm('Вы уверены, что хотите удалить этот маршрут?')) return;
+
+            try {
+                const response = await fetch(`/api/delete_route/${routeId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    // Обновляем список без перезагрузки
+                    loadUserRoutes();
+                } else {
+                    alert(data.error || 'Ошибка при удалении маршрута');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка соединения');
+            }
+        }
+
 
         function showAuthAlert() {
             alert('Для сохранения маршрута необходимо войти в систему');
@@ -659,6 +756,50 @@
             registerModal.show();
         });
         {% endif %}
+        async function saveRoute() {
+    if (!{{ user.is_authenticated|yesno:"true,false" }}) {
+        showAuthAlert();
+        return;
+    }
+
+    if (markers.length !== 2) {
+        alert('Для сохранения маршрута необходимо выбрать две точки');
+        return;
+    }
+
+    const [start, end] = markers.map(m => m.getLatLng());
+    const routeName = prompt('Введите название маршрута:') || 'Без названия';
+
+    try {
+        const response = await fetch('/api/save_route/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                start_lat: start.lat,
+                start_lng: start.lng,
+                end_lat: end.lat,
+                end_lng: end.lng,
+                name: routeName
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.id) {
+            alert(`Маршрут "${data.name}" успешно сохранен!`);
+            loadUserRoutes();
+        } else {
+            alert('Ошибка сохранения: ' + (data.error || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Ошибка соединения с сервером');
+    }
+}
+        document.getElementById('saveRouteBtn').addEventListener('click', saveRoute);
     </script>
 </body>
 </html>
