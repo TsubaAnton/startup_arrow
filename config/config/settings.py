@@ -136,3 +136,10 @@ AUTH_USER_MODEL = 'users.User'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# перенаправлять после успешного входа на страницу профиля пользователя
+LOGIN_REDIRECT_URL = '/users/user_form/'
+# URL для принудительного редиректа на форму входа, если доступ запрещён
+LOGIN_URL = '/users/'
+# можно также перенаправлять после логаута
+LOGOUT_REDIRECT_URL = '/users/'
