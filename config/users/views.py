@@ -46,13 +46,13 @@ def email_verification(request, token):
     return redirect(reverse('users:login'))
 
 
-class ProfileView(LoginRequiredMixin, UpdateView):
-    model = User
-    form_class = UserProfileForm
-    success_url = reverse_lazy('users:user_form')
-
-    def get_object(self, queryset=None):
-        return self.request.user
+# class ProfileView(LoginRequiredMixin, UpdateView):
+#     model = User
+#     form_class = UserProfileForm
+#     success_url = reverse_lazy('users:user_form')
+#
+#     def get_object(self, queryset=None):
+#         return self.request.user
 
 
 class UserListView(PermissionRequiredMixin, ListView):
