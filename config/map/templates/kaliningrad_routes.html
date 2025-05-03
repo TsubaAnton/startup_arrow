@@ -6,6 +6,7 @@
     <title>Маршруты по Калининградской области</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         html, body {
             height: 100%;
@@ -252,44 +253,101 @@
         </div>
          <!-- Панель POI -->
         <div id="poiPanel">
-            <span class="close-poi" onclick="document.getElementById('poiPanel').style.display='none'">×</span>
-            <h4>Места поблизости</h4>
-            <div class="filter-controls">
-    <h5>Выбор способа передвижения:</h5>
-    <select id="transportMode" class="form-select mb-3">
-      <option value="driving" selected>Автомобиль</option>
-      <option value="walking">Пешком</option>
-      <option value="cycling">Велосипед</option>
-      <option value="public_transport">Общественный транспорт</option>
-    </select>
-    <h5>Категории мест:</h5>
-    <div class="form-check">
-      <input class="form-check-input filter-checkbox" type="checkbox" data-category="historic" id="historicCheck" checked>
-      <label class="form-check-label" for="historicCheck">Исторические</label>
-    </div>
-    <div class="form-check">
-      <input class="form-check-input filter-checkbox" type="checkbox" data-category="tourism" id="tourismCheck" checked>
-      <label class="form-check-label" for="tourismCheck">Достопримечательности</label>
-    </div>
-    <div class="form-check">
-      <input class="form-check-input filter-checkbox" type="checkbox" data-category="museum" id="museumCheck" checked>
-      <label class="form-check-label" for="museumCheck">Музеи</label>
-    </div>
-    <div class="form-check">
-      <input class="form-check-input filter-checkbox" type="checkbox" data-category="religion" id="religionCheck" checked>
-      <label class="form-check-label" for="religionCheck">Религия</label>
-    </div>
-    <div class="form-check">
-      <input class="form-check-input filter-checkbox" type="checkbox" data-category="hotel" id="hotelCheck" checked>
-      <label class="form-check-label" for="hotelCheck">Отели/Хостелы</label>
-    </div>
-    <div class="form-check">
-      <input class="form-check-input filter-checkbox" type="checkbox" data-category="restaurant" id="restaurantCheck" checked>
-      <label class="form-check-label" for="restaurantCheck">Кафе/Рестораны</label>
-    </div>
-  </div>
-            <div id="poiList"></div>
+    <span class="close-poi" onclick="document.getElementById('poiPanel').style.display='none'">×</span>
+    <h4>Места поблизости</h4>
+    <div class="filter-controls">
+        <h5>Выбор способа передвижения:</h5>
+        <select id="transportMode" class="form-select mb-3">
+            <option value="driving" selected>Автомобиль</option>
+            <option value="walking">Пешком</option>
+            <option value="cycling">Велосипед</option>
+            <option value="public_transport">Общественный транспорт</option>
+        </select>
+
+        <h5>Категории мест:</h5>
+        <div class="category-icons">
+            <div class="icon-wrapper">
+                <input class="d-none filter-checkbox" type="checkbox" data-category="historic" id="historicCheck" checked>
+                <label for="historicCheck" class="category-icon" title="Исторические">
+                    <i class="fas fa-landmark"></i>
+                </label>
+            </div>
+            <div class="icon-wrapper">
+                <input class="d-none filter-checkbox" type="checkbox" data-category="tourism" id="tourismCheck" checked>
+                <label for="tourismCheck" class="category-icon" title="Достопримечательности">
+                    <i class="fas fa-camera-retro"></i>
+                </label>
+            </div>
+            <div class="icon-wrapper">
+                <input class="d-none filter-checkbox" type="checkbox" data-category="museum" id="museumCheck" checked>
+                <label for="museumCheck" class="category-icon" title="Музеи">
+                    <i class="fas fa-university"></i>
+                </label>
+            </div>
+            <div class="icon-wrapper">
+                <input class="d-none filter-checkbox" type="checkbox" data-category="religion" id="religionCheck" checked>
+                <label for="religionCheck" class="category-icon" title="Религия">
+                    <i class="fas fa-place-of-worship"></i>
+                </label>
+            </div>
+            <div class="icon-wrapper">
+                <input class="d-none filter-checkbox" type="checkbox" data-category="hotel" id="hotelCheck" checked>
+                <label for="hotelCheck" class="category-icon" title="Отели/Хостелы">
+                    <i class="fas fa-hotel"></i>
+                </label>
+            </div>
+            <div class="icon-wrapper">
+                <input class="d-none filter-checkbox" type="checkbox" data-category="restaurant" id="restaurantCheck" checked>
+                <label for="restaurantCheck" class="category-icon" title="Кафе/Рестораны">
+                    <i class="fas fa-utensils"></i>
+                </label>
+            </div>
         </div>
+    </div>
+    <div id="poiList"></div>
+</div>
+     <style>
+.category-icons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.icon-wrapper {
+    position: relative;
+}
+
+.category-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: #f0f0f0;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+}
+
+.category-icon:hover {
+    background: #e0e0e0;
+}
+
+.category-icon i {
+    font-size: 1.2rem;
+    color: #666;
+}
+
+.filter-checkbox:checked + .category-icon {
+    background: #007bff;
+    border-color: #0056b3;
+}
+
+.filter-checkbox:checked + .category-icon i {
+    color: white;
+}
+</style>
 
 
         <!-- НЕ перемещайте КНОПКУ "Сохранить" внутрь контейнера -->
