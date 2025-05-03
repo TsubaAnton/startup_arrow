@@ -250,41 +250,48 @@
             <h4>Мои сохраненные маршруты</h4>
             <div id="routesList"></div>
         </div>
-        <!-- Панель POI -->
+         <!-- Панель POI -->
         <div id="poiPanel">
             <span class="close-poi" onclick="document.getElementById('poiPanel').style.display='none'">×</span>
             <h4>Места поблизости</h4>
             <div class="filter-controls">
-                <div class="filter-controls">
-                <h5>Фильтры:</h5>
-                <div class="form-check">
-                    <input class="form-check-input filter-checkbox" type="checkbox" data-category="historic" id="historicCheck" checked>
-                    <label class="form-check-label" for="historicCheck">Исторические</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input filter-checkbox" type="checkbox" data-category="tourism" id="tourismCheck" checked>
-                    <label class="form-check-label" for="tourismCheck">Достопримечательности</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input filter-checkbox" type="checkbox" data-category="museum" id="museumCheck" checked>
-                    <label class="form-check-label" for="museumCheck">Музеи</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input filter-checkbox" type="checkbox" data-category="religion" id="religionCheck" checked>
-                    <label class="form-check-label" for="religionCheck">Религия</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input filter-checkbox" type="checkbox" data-category="hotel" id="hotelCheck" checked>
-                    <label class="form-check-label" for="hotelCheck">Отели/Хостелы</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input filter-checkbox" type="checkbox" data-category="restaurant" id="restaurantCheck" checked>
-                    <label class="form-check-label" for="restaurantCheck">Кафе/Рестораны</label>
-                </div>
-            </div>
-            </div>
+    <h5>Выбор способа передвижения:</h5>
+    <select id="transportMode" class="form-select mb-3">
+      <option value="driving" selected>Автомобиль</option>
+      <option value="walking">Пешком</option>
+      <option value="cycling">Велосипед</option>
+      <option value="public_transport">Общественный транспорт</option>
+    </select>
+    <h5>Категории мест:</h5>
+    <div class="form-check">
+      <input class="form-check-input filter-checkbox" type="checkbox" data-category="historic" id="historicCheck" checked>
+      <label class="form-check-label" for="historicCheck">Исторические</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input filter-checkbox" type="checkbox" data-category="tourism" id="tourismCheck" checked>
+      <label class="form-check-label" for="tourismCheck">Достопримечательности</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input filter-checkbox" type="checkbox" data-category="museum" id="museumCheck" checked>
+      <label class="form-check-label" for="museumCheck">Музеи</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input filter-checkbox" type="checkbox" data-category="religion" id="religionCheck" checked>
+      <label class="form-check-label" for="religionCheck">Религия</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input filter-checkbox" type="checkbox" data-category="hotel" id="hotelCheck" checked>
+      <label class="form-check-label" for="hotelCheck">Отели/Хостелы</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input filter-checkbox" type="checkbox" data-category="restaurant" id="restaurantCheck" checked>
+      <label class="form-check-label" for="restaurantCheck">Кафе/Рестораны</label>
+    </div>
+  </div>
             <div id="poiList"></div>
         </div>
+
+
         <!-- НЕ перемещайте КНОПКУ "Сохранить" внутрь контейнера -->
 
         <!-- Карта -->
@@ -405,6 +412,71 @@
             'hotel': {name: 'Отели/Хостелы', icon: '🏨', color: '#007bff'},
             'restaurant': {name: 'Кафе/Рестораны', icon: '🍴', color: '#dc3545'}
         };
+        const groupMapping = {
+            'Проживание': ['hotel'],
+            'Еда / Рестораны': ['restaurant'],
+            'Достопримечательности': ['tourism','museum','historic'],
+            'Мероприятия': [] // Пока пусто, можно добавить по необходимости
+        };
+        // Обработчики для категорий
+        document.querySelectorAll('#poiPanel details').forEach(detail => {
+            detail.addEventListener('toggle', updatePoiList);
+        });
+        // Обработчик для выбора транспорта
+        const transportSelect = document.getElementById('transportMode');
+        if (transportSelect) transportSelect.addEventListener('change', () => {
+            if (markers.length === 2) updateRoute();
+        });
+
+        // Расширяем updatePoiList с учётом групп
+        function updatePoiList() {
+            const openDetails = Array.from(document.querySelectorAll('#poiPanel details[open]'))
+                .map(d => d.dataset.category);
+            // Собираем все poi.category, соответствующие выбранным группам
+            let activeCategories = [];
+            openDetails.forEach(group => {
+                if (groupMapping[group]) activeCategories = activeCategories.concat(groupMapping[group]);
+            });
+            // Фильтрация POI
+            const filteredPois = allPois.filter(poi => activeCategories.includes(poi.category));
+            const poiList = document.getElementById('poiList');
+            poiList.innerHTML = '';
+            clearPoiMarkers();
+            if (filteredPois.length === 0) {
+                poiList.innerHTML = '<div class="alert alert-info">Нет мест по выбранным категориям</div>';
+                return;
+            }
+            // Группируем по poi.category для отображения
+            const grouped = {};
+            filteredPois.forEach(poi => {
+                if (!grouped[poi.category]) grouped[poi.category] = [];
+                grouped[poi.category].push(poi);
+            });
+            Object.entries(grouped).forEach(([cat, pois]) => {
+                const header = document.createElement('h5');
+                header.textContent = poiCategories[cat].icon + ' ' + poiCategories[cat].name;
+                poiList.appendChild(header);
+                pois.forEach(poi => {
+                    const item = document.createElement('div');
+                    item.className = 'poi-item';
+                    item.innerHTML = `<h6>${poi.name}</h6><small>${poi.tags.description||''}</small>`;
+                    item.onclick = () => highlightPoi(poi);
+                    poiList.appendChild(item);
+                });
+            });
+            // Отображаем маркеры
+            filteredPois.forEach(poi => {
+                const marker = L.marker([poi.lat, poi.lon], {
+                    icon: L.divIcon({
+                        className: 'poi-marker',
+                        html: `<span style="background-color: ${poiCategories[poi.category].color}; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">${poiCategories[poi.category].icon}</span>`,
+                        iconSize: [24,24]
+                    })
+                }).addTo(window.map).bindPopup(`<b>${poi.name}</b>`);
+                poiMarkers.push(marker);
+            });
+        }
+
 
         function resetRoute() {
             if (routeLine) {
