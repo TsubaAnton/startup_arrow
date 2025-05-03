@@ -95,6 +95,50 @@
             {% endfor %}
           </div>
         </section>
+        <div class="mt-5 border-top pt-4">
+    <h3 class="mb-4">🗺️ Мои предыдущие маршруты</h3>
+
+    <div class="row row-cols-1 row-cols-md-2 g-4">
+        {% for route in previous_routes %}
+        <div class="col">
+            <div class="card route-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h5 class="card-title mb-0">{{ route.name }}</h5>
+                        <small class="text-muted">{{ route.date }}</small>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-2">
+                        <div>
+                            <i class="bi bi-clock me-1"></i>
+                            <span>{{ route.duration }}</span>
+                        </div>
+                        <div>
+                            <i class="bi bi-signpost-2 me-1"></i>
+                            <span>{{ route.distance }}</span>
+                        </div>
+                    </div>
+
+                    <div class="route-tags mb-3">
+                        {% for tag in route.tags %}
+                        <span class="badge bg-secondary me-1">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-repeat me-1"></i>Повторить
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-trash me-1"></i>Удалить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
         <!-- ==== /Секция Достижений ==== -->
 
       </div>
@@ -103,6 +147,7 @@
 </div>
 
 <style>
+
   .profile-full-container {
     position: fixed; top:0; left:0; right:0; bottom:0;
     background: rgba(255,255,255,0.95); backdrop-filter: blur(5px);
@@ -141,5 +186,18 @@
   .achievement-card__descr {
     font-size:.9rem; color:#555;
   }
+    .route-card {
+    transition: transform 0.2s;
+    border: 1px solid rgba(0,0,0,0.125);
+}
+
+.route-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+}
+
+.route-tags {
+    min-height: 32px;
+}
 </style>
 {% endblock %}

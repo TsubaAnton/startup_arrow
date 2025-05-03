@@ -107,10 +107,27 @@ def profile(request):
 
         user.save()
         return redirect('users:profile')
-
+    previous_routes = [
+        {
+            'name': 'Калининград-Гусев',
+            'date': '15.04.2024',
+            'duration': '1 ч 52 мин',
+            'distance': '132 км',
+            'tags': ['отдых', 'природа']
+        },
+        {
+            'name': 'Парки Калининграда',
+            'date': '10.04.2024',
+            'duration': '3 ч 40 мин',
+            'distance': '8.7 км',
+            'tags': ['парки', 'отдых']
+        },
+    ]
     # GET — рендерим форму + достижения
     return render(request, 'users/profile.html', {
+        'user': request.user,
         'achievements': ACHIEVEMENTS,
+        'previous_routes': previous_routes
     })
 
 
