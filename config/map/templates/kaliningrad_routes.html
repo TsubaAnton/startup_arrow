@@ -158,6 +158,36 @@
         .route-item small {
             color: #6c757d;
         }
+        .leaflet-control-attribution {
+            display: none !important;
+           }
+          #map-container {
+            position: fixed; bottom: 1rem; right: 1rem; z-index: 1000;
+            transition: all 0.3s ease; border: 2px solid #ccc;
+            border-radius: 0.5rem; overflow: hidden; background: #fff;
+        }
+        #map-container.map-collapsed {
+    /* Увеличенный размер для маленькой формы */
+    width: 500px;
+    height: 625px;
+}
+        #map-container.map-fullscreen {
+    /* Полноэкранное состояние без скрытия навбара */
+    top: 56px; /* высота navbar */
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: calc(100vh - 56px);
+    border-radius: 0;
+    z-index: 900; /* ниже navbar (1000) */
+}
+        #map { width: 100%; height: calc(100% - 2.5rem); }
+        #map-toggle-btn {
+            position: absolute; bottom: 0; left: 0; width: 100%; padding: 0.5rem;
+            border-top: 1px solid #ccc; border-radius: 0 0 0.5rem 0.5rem;
+            background: #007bff; color: #fff; cursor: pointer; text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -213,18 +243,19 @@
     </div>
 
 
-    <div class="map-container">
-        <!-- Панель сохраненных маршрутов -->
+ <div id="map-container" class="map-collapsed">
+        <!-- Панель сохранённых маршрутов -->
         <div id="routesPanel">
-            <span class="close-poi" onclick="document.getElementById('routesPanel').style.display = 'none'">×</span>
+            <span class="close-poi" onclick="document.getElementById('routesPanel').style.display='none'">×</span>
             <h4>Мои сохраненные маршруты</h4>
             <div id="routesList"></div>
         </div>
         <!-- Панель POI -->
         <div id="poiPanel">
-            <span class="close-poi" onclick="document.getElementById('poiPanel').style.display = 'none'">×</span>
+            <span class="close-poi" onclick="document.getElementById('poiPanel').style.display='none'">×</span>
             <h4>Места поблизости</h4>
             <div class="filter-controls">
+                <div class="filter-controls">
                 <h5>Фильтры:</h5>
                 <div class="form-check">
                     <input class="form-check-input filter-checkbox" type="checkbox" data-category="historic" id="historicCheck" checked>
@@ -251,16 +282,17 @@
                     <label class="form-check-label" for="restaurantCheck">Кафе/Рестораны</label>
                 </div>
             </div>
+            </div>
             <div id="poiList"></div>
         </div>
+        <!-- НЕ перемещайте КНОПКУ "Сохранить" внутрь контейнера -->
 
-        <!-- Основная карта -->
+        <!-- Карта -->
         <div id="map"></div>
-
-        <!-- Кнопка сохранения маршрута -->
-        <button id="saveRouteBtn" class="btn btn-primary" {% if not user.is_authenticated %}onclick="showAuthAlert()"{% endif %}>Сохранить маршрут</button>
+        <!-- Кнопка-разворачивалка: вставьте НИЖЕ КАРТЫ -->
+        <button id="map-toggle-btn" class="btn btn-sm">Развернуть карту</button>
     </div>
-
+     <button id="saveRouteBtn" class="btn btn-primary" {% if not user.is_authenticated %}onclick="showAuthAlert()"{% endif %}>Сохранить маршрут</button>
     <!-- Модальные окна для авторизации -->
     <!-- Вход -->
     <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
@@ -344,11 +376,21 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
     <script>
-        // Инициализация карты
-        const map = L.map('map').setView([54.7104, 20.4522], 13);
+         window.map = L.map('map').setView([54.7104, 20.4522], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+        }).addTo(window.map);
+
+         document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('map-container');
+            const btn = document.getElementById('map-toggle-btn');
+            btn.addEventListener('click', function() {
+                const expanded = container.classList.toggle('map-fullscreen');
+                container.classList.toggle('map-collapsed', !expanded);
+                btn.textContent = expanded ? 'Свернуть карту' : 'Развернуть карту';
+                setTimeout(() => window.map.invalidateSize(), 300);
+            });
+        });
 
         let markers = [];
         let routeLine = null;

@@ -1,0 +1,51 @@
+/* static/css/profile.css */
+
+/* Контейнер карты */
+#map-container {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  transition: all 0.3s ease;
+  border: 2px solid #ccc;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* Свернутое состояние */
+#map-container.map-collapsed {
+  width: 300px;
+  height: 200px;
+}
+
+/* Развернутое состояние */
+#map-container.map-fullscreen {
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+}
+
+/* Карта внутри контейнера */
+#map {
+  width: 100%;
+  height: calc(100% - 2.5rem);
+}
+
+/* Кнопка переключения */
+#map-toggle-btn {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 0.5rem;
+  border-top: 1px solid #ccc;
+  border-radius: 0 0 0.5rem 0.5rem;
+  background: #007bff;
+  color: #fff;
+  cursor: pointer;
+}
