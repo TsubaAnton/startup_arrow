@@ -132,6 +132,7 @@
             display: none;
         }
 
+
         .route-item {
             margin-bottom: 10px;
             padding: 10px;
@@ -213,8 +214,12 @@
                     {% if user.is_authenticated %}
                         {% if user.is_staff %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'users:users' %}">Пользователи</a>
-                        </li>
+    <a class="nav-link btn btn-outline-success mx-2"
+       href="{% url 'users:community' %}"
+       style="border-radius: 20px;">
+        <i class="bi bi-people-fill"></i> Сообщество
+    </a>
+</li>
                         {% endif %}
                         <li class="nav-item">
                             <a href="{% url 'users:profile' %}" class="nav-link">Профиль</a>
@@ -269,7 +274,7 @@
             <div class="icon-wrapper">
                 <input class="d-none filter-checkbox" type="checkbox" data-category="historic" id="historicCheck" checked>
                 <label for="historicCheck" class="category-icon" title="Исторические">
-                    <i class="fas fa-landmark"></i>
+                    <i class="fas fa-archway"></i>
                 </label>
             </div>
             <div class="icon-wrapper">
@@ -281,7 +286,7 @@
             <div class="icon-wrapper">
                 <input class="d-none filter-checkbox" type="checkbox" data-category="museum" id="museumCheck" checked>
                 <label for="museumCheck" class="category-icon" title="Музеи">
-                    <i class="fas fa-university"></i>
+                    <i class="fas fa-landmark"></i>
                 </label>
             </div>
             <div class="icon-wrapper">
@@ -306,23 +311,48 @@
     </div>
     <div id="poiList"></div>
 </div>
-     <style>
+
+<style>
+#poiPanel {
+    width: 340px;
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+.save-route-btn {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0 15px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.save-route-btn:hover {
+    background: #0056b3;
+}
+
 .category-icons {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    width: 100%;
 }
 
 .icon-wrapper {
-    position: relative;
+    display: flex;
+    justify-content: center;
 }
 
 .category-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 8px;
     background: #f0f0f0;
     cursor: pointer;
@@ -335,7 +365,7 @@
 }
 
 .category-icon i {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     color: #666;
 }
 
@@ -348,6 +378,7 @@
     color: white;
 }
 </style>
+
 
 
         <!-- НЕ перемещайте КНОПКУ "Сохранить" внутрь контейнера -->

@@ -3,6 +3,7 @@ from django.urls import path
 from .apps import UsersConfig
 from .views import RegisterView, email_verification, ResetView, PasswordResetDone, ResetConfirmView, \
     ResetCompleteView, UserListView, UserDeleteView, profile
+from . import views
 
 app_name = UsersConfig.name
 
@@ -18,4 +19,9 @@ urlpatterns = [
     path('users/', UserListView.as_view(), name='users'),
     path('users/<int:pk>/delete', UserDeleteView.as_view(), name='user_confirm_delete'),
     path('profile/', profile, name='profile'),
+    path('community/', views.community, name='community'),
+    path('posts/create/', views.create_post, name='create_post'),  # Добавьте эту строку
+    path('posts/<int:post_id>/like/', views.like_post, name='like_post'),
+    path('posts/<int:post_id>/delete/', views.delete_post, name='delete_post'),
+    path('groups/<int:group_id>/join/', views.join_group, name='join_group'),
 ]

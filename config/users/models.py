@@ -40,3 +40,35 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.email
+
+
+class Group(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField()
+    members = models.ManyToManyField(User, related_name='community_groups')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Post(models.Model):
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True)
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    tags = models.CharField(max_length=100, blank=True)
+
+    def __str__(self):
+        return self.title
+
+
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    is_company = models.BooleanField(default=False)
+
+    # Дополнительные поля при необходимости
+
+    def __str__(self):
+        return self.user.username

@@ -6,12 +6,14 @@ from django.urls import reverse_lazy, reverse
 from django.views.generic import  TemplateView, CreateView, UpdateView, ListView, DeleteView
 import secrets
 from .forms import UserRegisterForm, UserProfileForm
-from .models import User
+from .models import User, Group, Post
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from .achievements import ACHIEVEMENTS
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
 
 EMAIL_HOST_USER = settings.EMAIL_HOST_USER
 
@@ -138,3 +140,43 @@ class ProfileView(TemplateView):
         ctx = super().get_context_data(**kwargs)
         ctx['achievements'] = ACHIEVEMENTS
         return ctx
+
+
+def community(request):
+    groups = Group.objects.all()
+    posts = Post.objects.select_related('author', 'group').order_by('-created_at')
+
+    # Фильтрация по тегу (пример)
+    tag_filter = request.GET.get('tag')
+    if tag_filter:
+        posts = posts.filter(tags__icontains=tag_filter)
+
+    context = {
+        'groups': groups,
+        'posts': posts,
+    }
+    return render(request, 'users/community.html', context)
+
+def join_group(request, group_id):
+    if request.method == 'POST':
+        # Логика присоединения к группе
+        return JsonResponse({'status': 'joined'})
+
+def create_post(request):
+    if request.method == 'POST':
+        # Логика создания поста
+        return JsonResponse({'success': True})
+
+def like_post(request, post_id):
+    if request.method == 'POST':
+        # Логика лайков
+        return JsonResponse({'likes_count': 42, 'action': 'liked'})
+
+
+@require_http_methods(["DELETE"])
+def delete_post(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    if post.author == request.user:
+        post.delete()
+        return JsonResponse({'status': 'deleted'})
+    return JsonResponse({'error': 'Forbidden'}, status=403)
